@@ -45,9 +45,13 @@
 </div>
 
 <script>
+  // Cloudinary
   const CLOUD_NAME = 'dstwnref6';
   const UPLOAD_PRESET = 'g7fnumfe';
-  const FETCH_URL = `https://res.cloudinary.com/${CLOUD_NAME}/image/list/follow.json`;
+
+  // Supabase
+  const SUPABASE_URL = 'https://eeivkowrojfnssuizanw.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaXZrb3dyb2pmbnNzdWl6YW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5OTMxNzksImV4cCI6MjA4NzU2OTE3OX0.NtvU4gGjLdlVasP2vXyWNYPNOS3Nrcu5YqZzQOXzV70';
 
   const gallery = document.getElementById('gallery');
   const lightbox = document.getElementById('lightbox');
@@ -57,25 +61,36 @@
   const fileInput = document.getElementById('fileInput');
   const uploadStatus = document.getElementById('uploadStatus');
 
-  // 갤러리 불러오기
+  // Supabase에서 이미지 목록 불러오기
   async function loadGallery() {
     try {
-      const res = await fetch(FETCH_URL);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/sketches?select=*&order=created_at.desc`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      });
       const data = await res.json();
-      const resources = data.resources || [];
 
       gallery.innerHTML = '';
-      resources
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .forEach((item, i) => {
-          const url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${item.public_id}`;
-          addToGallery(url, i);
-        });
-
-      countEl.textContent = resources.length > 0 ? `${resources.length} sketches` : '';
+      data.forEach((item, i) => addToGallery(item.url, i));
+      countEl.textContent = data.length > 0 ? `${data.length} sketches` : '';
     } catch (e) {
-      // 이미지 없거나 태그 없으면 빈 갤러리
+      console.error('갤러리 불러오기 실패', e);
     }
+  }
+
+  // Supabase에 URL 저장
+  async function saveToSupabase(url) {
+    await fetch(`${SUPABASE_URL}/rest/v1/sketches`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ url })
+    });
   }
 
   function addToGallery(url, index = 0) {
@@ -93,12 +108,11 @@
     gallery.insertBefore(item, gallery.firstChild);
   }
 
-  // 업로드
+  // Cloudinary 업로드 → URL을 Supabase에 저장
   async function uploadFile(file) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', UPLOAD_PRESET);
-    formData.append('tags', 'follow');
 
     uploadStatus.textContent = '올리는 중...';
     uploadStatus.className = 'upload-status uploading';
@@ -111,6 +125,7 @@
       const data = await res.json();
 
       if (data.secure_url) {
+        await saveToSupabase(data.secure_url);
         addToGallery(data.secure_url);
         const current = parseInt(countEl.textContent) || 0;
         countEl.textContent = `${current + 1} sketches`;
@@ -124,7 +139,6 @@
     }
   }
 
-  // 이벤트
   dropZone.onclick = () => fileInput.click();
   fileInput.onchange = e => Array.from(e.target.files).forEach(uploadFile);
 
