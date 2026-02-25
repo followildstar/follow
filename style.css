@@ -180,7 +180,6 @@
     footer span {
       font-size: 0.7rem;
       color: var(--muted);
-      letter-spacing: 0.08em;
     }
 
     #count {
@@ -239,5 +238,8 @@
       }
       .delete-btn {
         opacity: 1;
+      }
+      footer {
+       padding: 1rem 2rem;
       }
     }
