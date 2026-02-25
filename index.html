@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>follow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Noto+Sans+KR:wght@300;400&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <a href="#" class="site-title">follow</a>
+  <span class="upload-hint">daily sketches</span>
+</header>
+
+<main>
+  <div class="gallery" id="gallery"></div>
+
+  <div class="empty-state" id="emptyState">
+    <div class="big">drawn daily,<br>followed slowly.</div>
+    <p>첫 번째 스케치를 올려보세요</p>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <p class="upload-zone-text">이미지를 드래그하거나 클릭해서 업로드</p>
+  </div>
+</main>
+
+<footer>
+  <span id="count"></span>
+  <span>follow</span>
+</footer>
+
+<div class="lightbox" id="lightbox">
+  <span class="lightbox-close">close</span>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+  const gallery = document.getElementById('gallery');
+  const emptyState = document.getElementById('emptyState');
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightboxImg');
+  const countEl = document.getElementById('count');
+
+  let sketches = JSON.parse(localStorage.getItem('follow_sketches') || '[]');
+
+  function updateCount() {
+    countEl.textContent = sketches.length > 0 ? `${sketches.length} sketches` : '';
+  }
+
+  function render() {
+    gallery.innerHTML = '';
+    emptyState.style.display = sketches.length === 0 ? 'block' : 'none';
+
+    sketches.forEach((src, i) => {
+      const item = document.createElement('div');
+      item.className = 'sketch-item';
+      item.style.animationDelay = `${i * 0.05}s`;
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      img.onclick = () => openLightbox(src);
+      item.appendChild(img);
+      gallery.appendChild(item);
+    });
+
+    updateCount();
+  }
+
+  function openLightbox(src) {
+    lightboxImg.src = src;
+    lightbox.classList.add('active');
+  }
+
+  lightbox.onclick = () => lightbox.classList.remove('active');
+
+  function handleFiles(files) {
+    Array.from(files).forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        sketches.unshift(e.target.result);
+        localStorage.setItem('follow_sketches', JSON.stringify(sketches));
+        render();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  uploadZone.onclick = () => fileInput.click();
+  fileInput.onchange = e => handleFiles(e.target.files);
+
+  uploadZone.ondragover = e => {
+    e.preventDefault();
+    uploadZone.classList.add('drag-over');
+  };
+  uploadZone.ondragleave = () => uploadZone.classList.remove('drag-over');
+  uploadZone.ondrop = e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+  };
+
+  render();
+</script>
+
+</body>
+</html>
