@@ -3,7 +3,7 @@
 
     :root {
       --bg: #f7f5f2;
-      --ink: #1a1814;
+      --ink: #333;
       --muted: #9a9690;
       --line: #e0ddd8;
     }
@@ -60,7 +60,7 @@
       font-size: clamp(2.8rem, 7vw, 5.5rem);
       line-height: 1.1;
       color: var(--line);
-      letter-spacing: -0.01em;
+      letter-spacing: -0.03em;
     }
 
     /* 업로드 영역 */
@@ -79,9 +79,8 @@
     }
 
     .drop-zone p {
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       color: var(--muted);
-      letter-spacing: 0.06em;
       transition: color 0.2s ease;
     }
 
@@ -95,15 +94,14 @@
     /* 업로드 상태 */
     .upload-status {
       margin-top: 0.6rem;
-      font-size: 0.68rem;
+      font-size: 8rem;
       color: var(--muted);
-      letter-spacing: 0.06em;
       min-height: 1rem;
     }
 
     .upload-status.uploading { color: var(--ink); }
-    .upload-status.done { color: #7a9e7e; }
-    .upload-status.error { color: #c0756a; }
+    .upload-status.done { color: #2e4e32; }
+    .upload-status.error { color: #9e4a3d; }
 
     /* 갤러리 */
     .gallery {
@@ -149,6 +147,7 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
+      backdrop-filter: blur(4px);
     }
 
     .lightbox.active { display: flex; }
@@ -210,10 +209,10 @@
     .sketch-item { position: relative; }
     .delete-btn {
       position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      width: 25px;
-      height: 25px;
+      top: 0;
+      right: 0;
+      width: 30px;
+      height: 30px;
       border: none;
       cursor: pointer;
       display: flex;
@@ -222,9 +221,23 @@
       opacity: 0;
       transition: opacity 0.2s ease;
       font-family: 'EB Garamond', serif;
-      font-style: italic;
-      font-size: 20px;
-      color: var(--muted);
+      font-size: 30px;
+      color: var(--line);
+      background-color: transparent;
+      line-height: 30px;
     }
     .sketch-item:hover .delete-btn { opacity: 1; }
     .delete-btn:hover { color: var(--ink); }
+
+
+  @media (max-width: 700px) { 
+      header {
+        padding: 1rem 2rem;
+      }
+      main {
+        padding: 8rem 1rem 5rem;
+      }
+      .delete-btn {
+        opacity: 1;
+      }
+    }
