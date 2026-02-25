@@ -27,6 +27,9 @@
       <input type="file" id="fileInput" accept="image/*" multiple>
       <p>오늘의 스케치를 올려보세요</p>
     </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
     <div class="upload-status" id="uploadStatus"></div>
   </div>
 
@@ -47,7 +50,8 @@
 <script>
   const CLOUD_NAME = 'dstwnref6';
   const UPLOAD_PRESET = 'g7fnumfe';
-  const FETCH_URL = `https://res.cloudinary.com/${CLOUD_NAME}/image/list/follow.json`;
+  const SUPABASE_URL = 'https://eeivkowrojfnssuizanw.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaXZrb3dyb2pmbnNzdWl6YW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5OTMxNzksImV4cCI6MjA4NzU2OTE3OX0.NtvU4gGjLdlVasP2vXyWNYPNOS3Nrcu5YqZzQOXzV70';
 
   const gallery = document.getElementById('gallery');
   const lightbox = document.getElementById('lightbox');
@@ -56,32 +60,57 @@
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
   const uploadStatus = document.getElementById('uploadStatus');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar = document.getElementById('progressBar');
 
-  // 갤러리 불러오기
+  const sbHeaders = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json'
+  };
+
   async function loadGallery() {
     try {
-      const res = await fetch(FETCH_URL);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/sketch?select=*&order=created_at.desc`, { headers: sbHeaders });
       const data = await res.json();
-      const resources = data.resources || [];
-
+      if (!Array.isArray(data)) { console.error('Supabase 오류:', data); return; }
       gallery.innerHTML = '';
-      resources
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .forEach((item, i) => {
-          const url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${item.public_id}`;
-          addToGallery(url, i);
-        });
-
-      countEl.textContent = resources.length > 0 ? `${resources.length} sketches` : '';
+      data.forEach((item, i) => addToGallery(item.url, item.id, i));
+      countEl.textContent = data.length > 0 ? `${data.length} sketches` : '';
     } catch (e) {
-      // 이미지 없거나 태그 없으면 빈 갤러리
+      console.error('갤러리 불러오기 실패', e);
     }
   }
 
-  function addToGallery(url, index = 0) {
+  async function saveToSupabase(url) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/sketch`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=representation' },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) return data[0].id;
+      if (data && data.id) return data.id;
+      return null;
+    } catch (e) {
+      console.error('저장 실패', e);
+      return null;
+    }
+  }
+
+  async function deleteFromSupabase(id) {
+    await fetch(`${SUPABASE_URL}/rest/v1/sketch?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: sbHeaders
+    });
+  }
+
+  function addToGallery(url, id, index = 0) {
     const item = document.createElement('div');
     item.className = 'sketch-item';
     item.style.animationDelay = `${index * 0.05}s`;
+
     const img = document.createElement('img');
     img.src = url;
     img.alt = '';
@@ -89,19 +118,35 @@
       lightboxImg.src = url;
       lightbox.classList.add('active');
     };
+
+    const btn = document.createElement('button');
+    btn.className = 'delete-btn';
+    btn.textContent = '×';
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      if (!confirm('삭제할까요?')) return;
+      await deleteFromSupabase(id);
+      item.remove();
+      const current = parseInt(countEl.textContent) || 1;
+      countEl.textContent = current - 1 > 0 ? `${current - 1} sketches` : '';
+    };
+
     item.appendChild(img);
-    gallery.insertBefore(item, gallery.firstChild);
+    item.appendChild(btn);
+    gallery.appendChild(item);
   }
 
-  // 업로드
   async function uploadFile(file) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', UPLOAD_PRESET);
-    formData.append('tags', 'follow');
 
     uploadStatus.textContent = '올리는 중...';
     uploadStatus.className = 'upload-status uploading';
+    progressWrap.classList.add('active');
+    progressBar.style.width = '0%';
+    setTimeout(() => { progressBar.style.width = '40%'; }, 100);
+    setTimeout(() => { progressBar.style.width = '75%'; }, 900);
 
     try {
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
@@ -111,23 +156,29 @@
       const data = await res.json();
 
       if (data.secure_url) {
-        addToGallery(data.secure_url);
+        progressBar.style.width = '100%';
+        const id = await saveToSupabase(data.secure_url);
+        addToGallery(data.secure_url, id, 0);
         const current = parseInt(countEl.textContent) || 0;
         countEl.textContent = `${current + 1} sketches`;
         uploadStatus.textContent = '업로드 완료 ✓';
         uploadStatus.className = 'upload-status done';
-        setTimeout(() => { uploadStatus.textContent = ''; uploadStatus.className = 'upload-status'; }, 2000);
+        setTimeout(() => {
+          uploadStatus.textContent = '';
+          uploadStatus.className = 'upload-status';
+          progressWrap.classList.remove('active');
+          progressBar.style.width = '0%';
+        }, 2000);
       }
     } catch (e) {
+      progressWrap.classList.remove('active');
       uploadStatus.textContent = '업로드 실패. 다시 시도해주세요.';
       uploadStatus.className = 'upload-status error';
     }
   }
 
-  // 이벤트
   dropZone.onclick = () => fileInput.click();
   fileInput.onchange = e => Array.from(e.target.files).forEach(uploadFile);
-
   dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('drag-over'); };
   dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
   dropZone.ondrop = e => {
@@ -137,7 +188,6 @@
   };
 
   lightbox.onclick = () => lightbox.classList.remove('active');
-
   loadGallery();
 </script>
 
