@@ -69,19 +69,21 @@
     'Content-Type': 'application/json'
   };
 
+  // 갤러리 불러오기 — 최신순
   async function loadGallery() {
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/sketch?select=*&order=created_at.desc`, { headers: sbHeaders });
       const data = await res.json();
       if (!Array.isArray(data)) { console.error('Supabase 오류:', data); return; }
       gallery.innerHTML = '';
-      data.forEach((item, i) => addToGallery(item.url, item.id, i));
+      data.forEach((item, i) => addToGallery(item.url, item.id, i, false));
       countEl.textContent = data.length > 0 ? `${data.length} sketches` : '';
     } catch (e) {
       console.error('갤러리 불러오기 실패', e);
     }
   }
 
+  // Supabase에 저장
   async function saveToSupabase(url) {
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/sketch`, {
@@ -99,6 +101,7 @@
     }
   }
 
+  // Supabase에서 삭제
   async function deleteFromSupabase(id) {
     await fetch(`${SUPABASE_URL}/rest/v1/sketch?id=eq.${id}`, {
       method: 'DELETE',
@@ -106,7 +109,9 @@
     });
   }
 
-  function addToGallery(url, id, index = 0) {
+  // 갤러리에 아이템 추가
+  // prepend=true 면 맨 앞에 (새 업로드), false 면 순서대로 (불러오기)
+  function addToGallery(url, id, index = 0, prepend = true) {
     const item = document.createElement('div');
     item.className = 'sketch-item';
     item.style.animationDelay = `${index * 0.05}s`;
@@ -133,9 +138,15 @@
 
     item.appendChild(img);
     item.appendChild(btn);
-    gallery.appendChild(item);
+
+    if (prepend) {
+      gallery.insertBefore(item, gallery.firstChild);
+    } else {
+      gallery.appendChild(item);
+    }
   }
 
+  // 업로드
   async function uploadFile(file) {
     const formData = new FormData();
     formData.append('file', file);
@@ -158,7 +169,7 @@
       if (data.secure_url) {
         progressBar.style.width = '100%';
         const id = await saveToSupabase(data.secure_url);
-        addToGallery(data.secure_url, id, 0);
+        addToGallery(data.secure_url, id, 0, true);
         const current = parseInt(countEl.textContent) || 0;
         countEl.textContent = `${current + 1} sketches`;
         uploadStatus.textContent = '업로드 완료 ✓';
