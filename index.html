@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Noto+Sans+KR:wght@300;400&display=swap" rel="stylesheet">
    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <header>
@@ -16,11 +17,21 @@
 </header>
 
 <main>
-  <div class="gallery" id="gallery"></div>
-  <div class="empty-state" id="emptyState">
-    <div class="big">drawn daily,<br>followed slowly.</div>
-    <p>첫 번째 스케치를 올려보세요</p>
+
+  <div class="hero">
+    <p class="hero-big">drawn daily,<br>followed slowly.</p>
   </div>
+
+  <div class="upload-area">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*" multiple>
+      <p>오늘의 스케치를 올려보세요</p>
+    </div>
+    <div class="upload-status" id="uploadStatus"></div>
+  </div>
+
+  <div class="gallery" id="gallery"></div>
+
 </main>
 
 <footer>
@@ -34,42 +45,102 @@
 </div>
 
 <script>
-  const sketches = [
-    'images/draw001.png',
-  ];
-
+  const CLOUD_NAME = 'dstwnref6';
+  const UPLOAD_PRESET = 'g7fnumfe';
+  const FETCH_URL = `https://res.cloudinary.com/${CLOUD_NAME}/image/list/follow.json`;
 
   const gallery = document.getElementById('gallery');
-  const emptyState = document.getElementById('emptyState');
   const lightbox = document.getElementById('lightbox');
   const lightboxImg = document.getElementById('lightboxImg');
   const countEl = document.getElementById('count');
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const uploadStatus = document.getElementById('uploadStatus');
 
-  function render() {
-    gallery.innerHTML = '';
-    emptyState.style.display = sketches.length === 0 ? 'block' : 'none';
+  // 갤러리 불러오기
+  async function loadGallery() {
+    try {
+      const res = await fetch(FETCH_URL);
+      const data = await res.json();
+      const resources = data.resources || [];
 
-    sketches.forEach((src, i) => {
-      const item = document.createElement('div');
-      item.className = 'sketch-item';
-      item.style.animationDelay = `${i * 0.05}s`;
-      const img = document.createElement('img');
-      img.src = src;
-      img.alt = '';
-      img.onclick = () => {
-        lightboxImg.src = src;
-        lightbox.classList.add('active');
-      };
-      item.appendChild(img);
-      gallery.appendChild(item);
-    });
+      gallery.innerHTML = '';
+      resources
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .forEach((item, i) => {
+          const url = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${item.public_id}`;
+          addToGallery(url, i);
+        });
 
-    countEl.textContent = sketches.length > 0 ? `${sketches.length} sketches` : '';
+      countEl.textContent = resources.length > 0 ? `${resources.length} sketches` : '';
+    } catch (e) {
+      // 이미지 없거나 태그 없으면 빈 갤러리
+    }
   }
 
+  function addToGallery(url, index = 0) {
+    const item = document.createElement('div');
+    item.className = 'sketch-item';
+    item.style.animationDelay = `${index * 0.05}s`;
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = '';
+    img.onclick = () => {
+      lightboxImg.src = url;
+      lightbox.classList.add('active');
+    };
+    item.appendChild(img);
+    gallery.insertBefore(item, gallery.firstChild);
+  }
+
+  // 업로드
+  async function uploadFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', UPLOAD_PRESET);
+    formData.append('tags', 'follow');
+
+    uploadStatus.textContent = '올리는 중...';
+    uploadStatus.className = 'upload-status uploading';
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+
+      if (data.secure_url) {
+        addToGallery(data.secure_url);
+        const current = parseInt(countEl.textContent) || 0;
+        countEl.textContent = `${current + 1} sketches`;
+        uploadStatus.textContent = '업로드 완료 ✓';
+        uploadStatus.className = 'upload-status done';
+        setTimeout(() => { uploadStatus.textContent = ''; uploadStatus.className = 'upload-status'; }, 2000);
+      }
+    } catch (e) {
+      uploadStatus.textContent = '업로드 실패. 다시 시도해주세요.';
+      uploadStatus.className = 'upload-status error';
+    }
+  }
+
+  // 이벤트
+  dropZone.onclick = () => fileInput.click();
+  fileInput.onchange = e => Array.from(e.target.files).forEach(uploadFile);
+
+  dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('drag-over'); };
+  dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
+  dropZone.ondrop = e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    Array.from(e.dataTransfer.files).forEach(uploadFile);
+  };
+
   lightbox.onclick = () => lightbox.classList.remove('active');
-  render();
+
+  loadGallery();
 </script>
 
 </body>
+
 </html>
