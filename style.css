@@ -94,7 +94,7 @@
     /* 업로드 상태 */
     .upload-status {
       margin-top: 0.6rem;
-      font-size: 8rem;
+      font-size: 0.8rem;
       color: var(--muted);
       min-height: 1rem;
     }
@@ -243,3 +243,4 @@
        padding: 1rem 2rem;
       }
     }
+
