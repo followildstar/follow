@@ -69,6 +69,12 @@
     'Content-Type': 'application/json'
   };
 
+
+  function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  }
+
   // 갤러리 불러오기 — 최신순
   async function loadGallery() {
     try {
@@ -76,7 +82,7 @@
       const data = await res.json();
       if (!Array.isArray(data)) { console.error('Supabase 오류:', data); return; }
       gallery.innerHTML = '';
-      data.forEach((item, i) => addToGallery(item.url, item.id, i, false));
+      data.forEach((item, i) => addToGallery(item.url, item.id, item.created_at, i, false));
       countEl.textContent = data.length > 0 ? `${data.length} sketches` : '';
     } catch (e) {
       console.error('갤러리 불러오기 실패', e);
@@ -92,8 +98,8 @@
         body: JSON.stringify({ url })
       });
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) return data[0].id;
-      if (data && data.id) return data.id;
+      if (Array.isArray(data) && data.length > 0) return data[0];
+      if (data && data.id) return data;
       return null;
     } catch (e) {
       console.error('저장 실패', e);
@@ -111,7 +117,7 @@
 
   // 갤러리에 아이템 추가
   // prepend=true 면 맨 앞에 (새 업로드), false 면 순서대로 (불러오기)
-  function addToGallery(url, id, index = 0, prepend = true) {
+   function addToGallery(url, id, createdAt, index = 0, prepend = true) {
     const item = document.createElement('div');
     item.className = 'sketch-item';
     item.style.animationDelay = `${index * 0.05}s`;
@@ -136,8 +142,13 @@
       countEl.textContent = current - 1 > 0 ? `${current - 1} sketches` : '';
     };
 
+    const date = document.createElement('p');
+    date.className = 'sketch-date';
+    date.textContent = formatDate(createdAt);
+
     item.appendChild(img);
     item.appendChild(btn);
+    item.appendChild(date);
 
     if (prepend) {
       gallery.insertBefore(item, gallery.firstChild);
@@ -145,7 +156,6 @@
       gallery.appendChild(item);
     }
   }
-
   // 업로드
   async function uploadFile(file) {
     const formData = new FormData();
@@ -168,8 +178,10 @@
 
       if (data.secure_url) {
         progressBar.style.width = '100%';
-        const id = await saveToSupabase(data.secure_url);
-        addToGallery(data.secure_url, id, 0, true);
+        const saved = await saveToSupabase(data.secure_url);
+        const id = saved ? saved.id : null;
+        const createdAt = saved ? saved.created_at : new Date().toISOString();
+        addToGallery(data.secure_url, id, createdAt, 0, true);
         const current = parseInt(countEl.textContent) || 0;
         countEl.textContent = `${current + 1} sketches`;
         uploadStatus.textContent = '업로드 완료 ✓';
@@ -203,5 +215,4 @@
 </script>
 
 </body>
-
 </html>
