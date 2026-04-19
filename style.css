@@ -254,3 +254,9 @@ p.sketch-date {
     left: 10px;
     opacity: 0.8;
 }
+    .today-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      margin-bottom: 0.6rem;
+    }
