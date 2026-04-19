@@ -244,3 +244,13 @@
        padding: 1rem 2rem;
       }
     }
+
+/* 업로드 날짜 추가 */
+p.sketch-date {
+    position: absolute;
+    font-size: 0.65rem;
+    color: var(--muted);
+    bottom: 10px;
+    left: 10px;
+    opacity: 0.8;
+}
