@@ -25,6 +25,7 @@
   <div class="upload-area">
     <div class="drop-zone" id="dropZone">
       <input type="file" id="fileInput" accept="image/*" multiple>
+      <p class="today-label" id="todayLabel"></p>
       <p>오늘의 스케치를 올려보세요</p>
     </div>
     <div class="progress-wrap" id="progressWrap">
@@ -69,10 +70,26 @@
     'Content-Type': 'application/json'
   };
 
+  const DAYS_KO = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  const DAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  // 상단 오늘 날짜 문구
+  function setTodayLabel() {
+    const d = new Date();
+    const month = d.getMonth() + 1;
+    const date = d.getDate();
+    const day = DAYS_KO[d.getDay()];
+    document.getElementById('todayLabel').textContent = `오늘은 ${month}월 ${date}일 ${day}입니다`;
+  }
+
+  // 이미지 아래 날짜 포맷 — 2026.04.19 Sun
   function formatDate(dateStr) {
     const d = new Date(dateStr);
-    return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dow = DAYS_EN[d.getDay()];
+    return `${y}.${m}.${day} ${dow}`;
   }
 
   // 갤러리 불러오기 — 최신순
@@ -211,7 +228,8 @@
   };
 
   lightbox.onclick = () => lightbox.classList.remove('active');
-  loadGallery();
+setTodayLabel();
+loadGallery();
 </script>
 
 </body>
